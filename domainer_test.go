@@ -5,7 +5,7 @@ import (
 )
 
 func TestExtractRootDomain(t *testing.T) {
-	tlds := ReadTldsFromFile()
+	tlds := GetTLDs()
 
 	testCases := []struct {
 		domain       string
@@ -16,6 +16,16 @@ func TestExtractRootDomain(t *testing.T) {
 			domain:       "foo.example.com",
 			allowedTLDs:  tlds,
 			expectedRoot: "example.com",
+		},
+		{
+			domain:       "http://csv.example.com [Amazon CloudFront,Amazon Web Services,Cloudflare,Cloudflare Bot Management,HTTP/3]",
+			allowedTLDs:  tlds,
+			expectedRoot: "example.com",
+		},
+		{
+			domain:       "https://sandbox-sandbox-public-public.sandbox2.k8s.indeed.tech [HSTS]",
+			allowedTLDs:  tlds,
+			expectedRoot: "indeed.tech",
 		},
 		{
 			domain:       "https://foo.example.com",
@@ -36,6 +46,11 @@ func TestExtractRootDomain(t *testing.T) {
 			domain:       "1-1.example.com",
 			allowedTLDs:  tlds,
 			expectedRoot: "example.com",
+		},
+		{
+			domain:       "1.example.com",
+			allowedTLDs:  tlds,
+			expectedRoot: "none",
 		},
 		{
 			domain:       "11.example.com",

@@ -4,13 +4,44 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"unicode"
 )
 
-func getTLDs() []string {
+func main() {
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		fmt.Fprintln(os.Stderr, "Please provide domains via stdin.")
+		os.Exit(1)
+	}
 
-	lines := []string{
+	tlds := GetTLDs()
+
+	scanner := bufio.NewScanner(os.Stdin)
+	seenDomains := make(map[string]bool)
+
+	for scanner.Scan() {
+		domain := scanner.Text()
+		rootDomain := ExtractRootDomain(domain, tlds)
+		if rootDomain != "none" {
+			seenDomains[rootDomain] = true
+		}
+	}
+
+	if scanner.Err() != nil {
+		fmt.Fprintln(os.Stderr, "Error reading input:", scanner.Err())
+		os.Exit(1)
+	}
+
+	for domain := range seenDomains {
+		fmt.Println(domain)
+	}
+}
+
+func GetTLDs() []string {
+
+	tldList := []string{
 		"co.uk", "com.au", "co.in", "co.jp", "com.br", "co.za", "com.mx", "co.nz", "co.kr", "co.th",
 		"aaa", "aarp", "abarth", "abb", "abbott", "abbvie", "abc", "able", "abogado", "abudhabi",
 		"ac", "academy", "accenture", "accountant", "accountants", "aco", "active", "actor", "ad", "adac",
@@ -176,11 +207,11 @@ func getTLDs() []string {
 
 	// Process TLD's
 	var tlds []string
-	for _, line := range lines {
-		tld := strings.TrimSpace(line)
-		tld = strings.TrimPrefix(tld, ".")
-		if tld != "" {
-			tlds = append(tlds, tld)
+	for _, line := range tldList {
+		tldSuffix := strings.TrimSpace(line)
+		tldSuffix = strings.TrimPrefix(tldSuffix, ".")
+		if tldSuffix != "" {
+			tlds = append(tlds, tldSuffix)
 		}
 	}
 
@@ -188,27 +219,41 @@ func getTLDs() []string {
 }
 
 func ExtractRootDomain(domain string, tlds []string) string {
-	// Check if the domain ends with one of the passed TLDs
-	for _, tld := range tlds {
-		if strings.HasSuffix(domain, "."+tld) {
-			// Remove the TLD from the domain
-			domainWithoutTLD := strings.TrimSuffix(domain, "."+tld)
-			domainWithoutTLD = removeScheme(domainWithoutTLD)
-			// Split the domain into labels
-			labels := strings.Split(domainWithoutTLD, ".")
-			// Validate each label
-			for _, label := range labels {
-				if !isValidLabel(label) {
-					return "none"
+	// Tokenize the input text
+	tokens := tokenize(domain)
+
+	for _, token := range tokens {
+		if isDomain(token) {
+			tldSuffix := findTLD(token, tlds)
+			if tldSuffix != "" {
+				domainWithoutTLDAndScheme := removeTLDAndScheme(token, tldSuffix)
+				domainLabels := splitDomainLabels(domainWithoutTLDAndScheme)
+				if validateDomainLabels(domainLabels) {
+					topLevelDomain := getLastLabel(domainLabels)
+					return topLevelDomain + "." + tldSuffix
 				}
 			}
-			// Extract the last label
-			lastLabel := labels[len(labels)-1]
-			return lastLabel + "." + tld
 		}
 	}
 
 	return "none"
+}
+
+func tokenize(text string) []string {
+	// Use simple whitespace splitting for tokenization
+	return strings.Fields(text)
+}
+
+func isDomain(token string) bool {
+	// Use a simple regex pattern to match potential domains
+	domainPattern := `^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	token = strings.TrimSpace(token)
+	token = removeScheme(token)
+	matched, err := regexp.MatchString(domainPattern, token)
+	if err != nil {
+		return false
+	}
+	return matched
 }
 
 func removeScheme(domain string) string {
@@ -219,57 +264,69 @@ func removeScheme(domain string) string {
 	return domain
 }
 
-func isValidLabel(label string) bool {
-	// RFC implementation of valid domain name labels
-	// See: https://cs.uwaterloo.ca/twiki/view/CF/HostNamingRules
+func findTLD(domain string, tlds []string) string {
+	for _, tld := range tlds {
+		if strings.HasSuffix(domain, "."+tld) {
+			return tld
+		}
+	}
+	return ""
+}
 
-	// Check the length of the label
-	if len(label) > 63 {
-		return false
-	}
-	// Check if the label starts with a letter or digit (RFC1123)
-	if !unicode.IsLetter(rune(label[0])) && !unicode.IsDigit(rune(label[0])) {
-		return false
-	}
-	// Check if the label ends with a letter or digit
-	if !unicode.IsLetter(rune(label[len(label)-1])) && !unicode.IsDigit(rune(label[len(label)-1])) {
-		return false
-	}
-	// Check if the interior characters of the label are letters, digits, or hyphen
-	for _, char := range label[1 : len(label)-1] {
-		if !unicode.IsLetter(char) && !unicode.IsDigit(char) && char != '-' {
+func removeTLDAndScheme(domain, tldSuffix string) string {
+	domainWithoutScheme := removeScheme(domain)
+	return strings.TrimSuffix(domainWithoutScheme, "."+tldSuffix)
+}
+
+func splitDomainLabels(domain string) []string {
+	return strings.Split(domain, ".")
+}
+
+func validateDomainLabels(labels []string) bool {
+	for _, label := range labels {
+		if !isValidLabel(label) {
 			return false
 		}
 	}
 	return true
 }
 
-func main() {
-	stat, _ := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) != 0 {
-		fmt.Fprintln(os.Stderr, "Please provide domains via stdin.")
-		os.Exit(1)
+func isValidLabel(label string) bool {
+	// RFC implementation of valid domain name labels
+	// See: https://cs.uwaterloo.ca/twiki/view/CF/HostNamingRules
+
+	if len(label) < 2 {
+		return false
 	}
 
-	tlds := getTLDs()
+	// Check the length of the label
+	if len(label) > 63 {
+		return false
+	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	seenDomains := make(map[string]bool)
+	// Check if the label starts with a letter or digit (RFC1123)
+	if !isLetterOrDigit(label[0]) {
+		return false
+	}
+	// Check if the label ends with a letter or digit
+	if len(label) > 2 && !isLetterOrDigit(label[len(label)-1]) {
+		return false
+	}
 
-	for scanner.Scan() {
-		domain := scanner.Text()
-		rootDomain := ExtractRootDomain(domain, tlds)
-		if rootDomain != "none" {
-			seenDomains[rootDomain] = true
+	// Check if the interior characters of the label are letters, digits, or hyphen
+	for _, char := range label[1 : len(label)-1] {
+		if !isLetterOrDigit(byte(char)) && char != '-' {
+			return false
 		}
 	}
 
-	if scanner.Err() != nil {
-		fmt.Fprintln(os.Stderr, "Error reading input:", scanner.Err())
-		os.Exit(1)
-	}
+	return true
+}
 
-	for domain := range seenDomains {
-		fmt.Println(domain)
-	}
+func isLetterOrDigit(char byte) bool {
+	return unicode.IsLetter(rune(char)) || unicode.IsDigit(rune(char))
+}
+
+func getLastLabel(labels []string) string {
+	return labels[len(labels)-1]
 }
