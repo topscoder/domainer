@@ -1,4 +1,4 @@
-# Domainer
+# Domainer - Extract Root Domains from a List of Domains
 
 Domainer is a Go script that extracts the root domain from a list of domains based on a provided list of top-level domains (TLDs) that follows the rules of ARPANET host names as specified in RFC1034 and RFC1123. The list of Top-Level Domains is based on the [official TLD list](https://data.iana.org/TLD/tlds-alpha-by-domain.txt). Also it respects so called Country Code Top-Level Domains.
 
