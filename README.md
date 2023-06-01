@@ -7,7 +7,7 @@ Domainer is a Go script that extracts the root domain from a list of domains bas
 To install Domainer, you can use the following command:
 
 ```shell
-go install github.com/topscoder/domainer
+go install github.com/topscoder/domainer@latest
 ```
 
 This will install the Domainer script as an executable in your Go bin directory.
