@@ -42,7 +42,10 @@ func main() {
 func GetTLDs() []string {
 
 	tldList := []string{
-		"co.uk", "com.au", "co.in", "co.jp", "com.br", "co.za", "com.mx", "co.nz", "co.kr", "co.th",
+		"co.at", "co.id", "co.il", "co.in", "co.jp", "co.ke", "co.kr", "co.nz", "co.th", "co.uk", "co.za",
+		"com.ar", "com.au", "com.bd", "com.br", "com.cn", "com.co", "com.eg", "com.hk", "com.lk", "com.mx",
+		"com.my", "com.pe", "com.ph", "com.pk", "com.py", "com.sa", "com.sg", "com.tr", "com.tw", "com.uy", "com.vn",
+
 		"aaa", "aarp", "abarth", "abb", "abbott", "abbvie", "abc", "able", "abogado", "abudhabi",
 		"ac", "academy", "accenture", "accountant", "accountants", "aco", "active", "actor", "ad", "adac",
 		"ads", "adult", "ae", "aeg", "aero", "aetna", "af", "afamilycompany", "afl", "africa",
